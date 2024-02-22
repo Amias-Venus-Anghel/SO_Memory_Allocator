@@ -1,0 +1,85 @@
+/* Memory-Allocator - tema 2 SO */
+
+In cadrul implementari am folosit ca surse de inspiratie cele 2 resurse aflate 
+la finalul cerintei:
+    > "Implementing malloc" slides by Michael Saelee
+    > Malloc Tutorial
+
+/* DETALII DE IMPLEMENTARE */
+
+In cadrul implementarii am ales modularizarea codului prin creerea mai multor
+functii auxiliare. In continuare voi descrie pe scurt functionalitatea acestora.
+
+/* merge_blocks */
+    Realizeaza imbinarea tuturor blocurilor libere din lista.
+
+/* find_best_fit */
+    Primeste ultimul element al listei si o dimensiune minima. Cauta in lista 
+    cel mai mic block liber cu o dimensiune cel putin egala cu dimensiunea ceruta.
+
+/* request_space */
+    Primeste ultimul element al listei si o dimensiune.
+    Alloca memorie folosind sbrk, seteaza datele blocului si il adauga in lista. 
+
+/* expand_last */
+    Primeste ultimul element al listei si dimensiunea ce trebuie adaugata si 
+    extinde zona de memorie a ultimului block. Deoarece adresa si datele blocului
+    (exceptand dimensiunea) nu se modifica, este suficient sa se faca un apel sbrk
+    fara alocarea unui nou bloc in lista (combinarea lor ar duce la o parcurgere
+    inutila a listei).
+
+/* request_space_mmap */
+    Primeste o dimensiune si creaza un nou bloc alocat cu mmap.
+
+/* get_block */
+    Primeste un pointer la o zona de memorie si returneaza adresa blocului 
+    corespunzator.
+
+/* split_block */
+    Primeste un bloc si o dimensiune si imparte blocul in 2 blocuri noi, setand
+    dimensiunile si legaturile necesare pentru pastrarea listei.
+
+/* allocMem */
+    Deoarece implementarile pentru malloc si calloc ar fi similare, am ales
+    folosirea acestei functii auxiliare.
+    Primeste o dimensiune si un threashold. Se aloca concret memorie, utilizand
+    threasholdul dat ca limita pentru alocarea cu mmap / sbrk. Se adauga 
+    padding la dimensiune, daca alocare este pentru primul element din lista, 
+    se face prealocare de memorie si se face split pentru regiunea ceruta. 
+    Altfel, se face unirea tuturor elementelor libere si se cauta un bloc liber
+    suficient de mare. In cazul in care nu este gasit, fie se extinde ultimul
+    block, fie se aloca unul nou. Daca se gaseste se segmenteaza pentru a nu 
+    irosi spatiul liber ramas in plus.
+    Functia returneaza blocul creat/gasit.
+
+/* expandTillSize */
+    Primeste un bloc si o dimensiune si incearca sa uneasca blocul curent cu
+    urmatorul bloc liber, pana cand blocul rezultat este suficient de mare pentru
+    a contine dimensiunea data.
+
+Implementarea functiilor principale:
+
+/* os_malloc */
+    Apeleaza allocMem si returneaza pointerul catre zona de memorie pentru
+    utilizator.
+
+/* os_free */
+    Se verifica statusul blocului: in cazul alocarii cu mmap se apeleaza munmap,
+    altfel se va marca blocul ca liber pentru viitoare utilizari.
+
+/* os_calloc */
+    Se obtine dimensiunea de threashold si se apeleaza allocMem. Se seteaza
+    zona de memorie cu 0 si se returneaza pointerul respectiv.
+
+/* os_realloc */
+    Se verifica conditiile initiale. 
+    Se verifica daca pointerul respectiv era alocat cu mmap sau daca noua 
+    dimensiunea depaseste threasholdul si se aloca o noua zona de memorie unde
+    se copiaza datele.
+    In cazul in care dimensiunea de realocare este mai mica se face split pe 
+    bloc.
+    Se incearca extinderea blocului curent si se returneaza pointerul intial in
+    caz de succes.
+    Daca blocul corespunzator pointerului este ultimul din lista, se extinde
+    acesta.
+    Altfel se va aloca un nou bloc si se vor copia datele.
